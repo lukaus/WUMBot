@@ -1,0 +1,43 @@
+{
+	"startswith":
+	{
+		"help":			"Help text not yet implemented lol",	
+		"whoareyou":	"The sexiest bot alive.",	
+		"command":		"<command list here>",	
+		"commands":		"<command list here>",
+		"info":			"No info for today."
+	},
+
+	"fullmatch" :
+	{
+		"good bot" : "Good human.",
+		"bad bot" : "Ouch.",
+		"im tired of bots taking our jobs" : ":("
+	},
+
+
+	"happy":
+	{
+		"fullmatch" : 
+		{
+			"good bot" : 1
+		},
+		"startswith" : 
+		{
+
+		}
+	},
+
+	"sad":
+	{
+		"fullmatch" : 
+		{
+			"im tired of bots taking our jobs" : 3,
+			"bad bot" : 1
+		},
+		"startswith" : 
+		{
+
+		}
+	}
+}
