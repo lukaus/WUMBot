@@ -11,6 +11,7 @@ class ChannelLock:
 	members 		= [] 	# all members assigned to role
 	allowed_roles	= []	# all allowed roles
 	active 			= True
+	old_roles		= []	# store old roles that they may be restored
 
 
 class Edgelord:
@@ -48,6 +49,10 @@ async def refresh_channels():
 			message = "Unlocking empty channel " + channel_lock.channel.name 
 			await client.send_message(infochannel, message)
 			await client.delete_role(channel_lock.server, channel_lock.role) # this also removes the roles from users and channels
+			reallow = discord.PermissionOverwrite()
+			reallow.speak = None
+			reallow.connect = None
+			await client.edit_channel_permissions(channel_lock.channel, channel_lock.server.default_role, reallow)
 			locked_channels.remove(channel_lock)
 
 async def close_all():
@@ -55,6 +60,38 @@ async def close_all():
 		await client.delete_role(channel_lock.server, channel_lock.role) # this also removes the roles from users and channels
 		locked_channels.remove(channel_lock)
 
+async def check_for_empty_channels():
+	await client.wait_until_ready()
+	while not client.is_closed:
+		for channel_lock in locked_channels:
+			# check the associated voice channel and unlock it if empty
+			channel = client.get_channel(channel_lock.channel.id)
+			if len(channel.voice_members) == 0:
+				infoID = channel_lock.info_channelid
+				infochannel = client.get_channel(infoID)
+				message = "Unlocking empty channel " + channel_lock.channel.name 
+				await client.send_message(infochannel, message)
+				await client.delete_role(channel_lock.server, channel_lock.role) # this also removes the roles from users and channelsreallow = discord.PermissionOverwrite()
+				reallow = discord.PermissionOverwrite()
+				reallow.speak = None
+				reallow.connect = None
+				await client.edit_channel_permissions(channel_lock.channel, channel_lock.server.default_role, reallow)
+				locked_channels.remove(channel_lock)
+		print ("channels checked")
+		await asyncio.sleep(69)
+
+async def debug_console():
+	await client.wait_until_ready()
+	while not client.is_closed:
+		command = input("> ")
+		if command == "a":
+			print (command)
+
+		elif command == "q":
+			await close_all()
+			await client.logout()
+			await client.close()
+			sys.exit()
 
 @client.event
 async def on_ready():
@@ -63,7 +100,7 @@ async def on_ready():
 	print(client.user.name)
 	print(client.user.id)
 	print('------')
-	await client.change_presence(game=discord.Game(name='nothing; say !help'))
+	await client.change_presence(game=discord.Game(name='Say !help'))
 
 @client.event
 async def on_message(message):
@@ -82,6 +119,9 @@ async def on_message(message):
 	
 	if message.content.lower() in responses["sad"]["fullmatch"]:
 		sad = sad + responses["sad"]["fullmatch"][message.content.lower()]
+
+	if message.content.lower() == "god bot":
+		await client.send_file(message.channel, 'god_bot.jpg')
 
 	# Startswith commands
 	if message.content.startswith('!'):
@@ -145,9 +185,18 @@ async def on_message(message):
 
 
 			permissions = discord.Permissions.voice()
-			permissions.update(speak=False, join_voice=False)
+			permissions.update(speak=True, join_voice=True)
 
-			await client.edit_channel(message.author.voice_channel, permissions)
+			permit_overwrite = discord.PermissionOverwrite()
+			permit_overwrite.connect = True
+			permit_overwrite.speak = True
+
+			forbid_overwrite = discord.PermissionOverwrite()
+			forbid_overwrite.connect = False
+			forbid_overwrite.speak = False
+
+			await client.edit_channel_permissions(message.author.voice_channel, new_role, permit_overwrite)
+			await client.edit_channel_permissions(message.author.voice_channel, message.server.default_role, forbid_overwrite)
 
 
 			locked_channels.append(channel_lock)
@@ -174,6 +223,10 @@ async def on_message(message):
 
 			toSay += "Unlocking channel " + channel_lock.channel.name
 			await client.delete_role(channel_lock.server, channel_lock.role)
+			reallow = discord.PermissionOverwrite()
+			reallow.speak = None
+			reallow.connect = None
+			await client.edit_channel_permissions(channel_lock.channel, channel_lock.server.default_role, reallow)
 			locked_channels.remove(channel_lock)
 			await client.send_message(message.channel, toSay)
 		
@@ -247,12 +300,7 @@ async def on_message(message):
 		elif command == 'whoami':
 			toSay += message.author.name
 			await client.send_message(message.channel, toSay)
-		elif command == 'quit':
-			await close_all()
-			await client.logout()
-			await client.close()
-			sys.exit()
-		
+
 		elif command == 'whois':
 			if len(message.mentions) > 0:
 				for mention in message.mentions:
@@ -262,5 +310,6 @@ async def on_message(message):
 		else:
 			await client.send_message(message.channel, "Command not recognized. (!commands)")
 
-
-client.run('TOKEN HERE')
+client.loop.create_task(check_for_empty_channels())
+#client.loop.create_task(debug_console())
+client.run('Mzc4Mzk2MTMyNDcwMDMwMzM3.DPs1-w.PBO85h99ZNpugNpTHLJhZsIpSIs')
