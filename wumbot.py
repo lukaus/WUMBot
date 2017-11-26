@@ -258,7 +258,12 @@ async def on_message(message):
 						toSay += " : "
 						toSay += mem.mention
 						
-						ch.members.append(mem)
+						foundMember = None
+						for svmems in ch.members:
+							if svmems == mem:
+								foundMember = svmems 
+						if foundMember == None:
+							ch.members.append(mem)
 
 					index = len(message.mentions)
 
@@ -276,8 +281,39 @@ async def on_message(message):
 			await client.send_message(message.channel, toSay)
 		
 		elif command == 'forbid':
-			toSay += 'Forbidding user: <not yet implemented>'
+			if message.author.voice_channel is None:
+				toSay += "You must be in a locked channel to forbid members from it."
+				await client.send_message(message.channel, toSay)
+				return
+
+			for ch in locked_channels:
+				if ch.channel.id == message.author.voice_channel.id:
+
+					toSay += "Forbidding "
+					
+					for mem in message.mentions:
+						await client.remove_roles(mem, ch.role)
+						toSay += " : "
+						toSay += mem.mention
+						
+						foundMember = None
+						for svmems in ch.members:
+							if svmems == mem:
+								ch.members.remove(svmems)
+
+					index = len(message.mentions)
+
+					for role in message.role_mentions:
+						# add role to channel permitted NYI
+						toSay += " : " + role.mention
+						
+					toSay += " to access " + message.author.voice_channel.name
+					if len(message.role_mentions) > 0:
+						toSay += '\nNote: allow @role is not yet implemented and will have no effect'
+					await client.send_message(message.channel, toSay)
+					return
 			
+			toSay += "Channel is not locked."
 			await client.send_message(message.channel, toSay)
 
 		elif command == 'reload':
@@ -312,4 +348,4 @@ async def on_message(message):
 
 client.loop.create_task(check_for_empty_channels())
 #client.loop.create_task(debug_console())
-client.run('Mzc4Mzk2MTMyNDcwMDMwMzM3.DPs1-w.PBO85h99ZNpugNpTHLJhZsIpSIs')
+client.run('TOKEN HERE')
