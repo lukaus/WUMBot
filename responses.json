@@ -1,15 +1,16 @@
 {
 	"startswith":
 	{
-		"help":			"Help text not yet implemented lol",	
+		"help":			"Bot for locking voice channels to certain users. !lock, !unlock, !allow, !forbid. See !command for more detail.",	
 		"whoareyou":	"The sexiest bot alive.",	
-		"command":		"<command list here>",	
-		"commands":		"<command list here>",
+		"command":		"Commands:\n\t!lock \t\tLocks current channel to users in channel\n\t!unlock\tDeletes lock on current channel\n\t!allow\t\t*(@user/role)* : Allows role or user into channel\n\t!forbid\t\t*(@user/role)* : Forbids user from entering current channel\n\t!locks\t\tLists current locks and allowed users/roles\n\t!whoami\tLists your username and unique id\n\t!whois\t\t*(@user)* : Lists user's username and unique id\n\t!problem\tReports problem with bot to Lukaus",	
+		"commands":		"Commands:\n\t!lock \t\tLocks current channel to users in channel\n\t!unlock\tDeletes lock on current channel\n\t!allow\t\t*(@user/role)* : Allows role or user into channel\n\t!forbid\t\t*(@user/role)* : Forbids user from entering current channel\n\t!locks\t\tLists current locks and allowed users/roles\n\t!whoami\tLists your username and unique id\n\t!whois\t\t*(@user)* : Lists user's username and unique id\n\t!problem\tReports problem with bot to Lukaus",	
 		"info":			"No info for today."
 	},
 
 	"fullmatch" :
 	{
+		"bot" : "here",
 		"good bot" : "Good human.",
 		"bad bot" : "Ouch.",
 		"im tired of bots taking our jobs" : ":("
