@@ -2,6 +2,7 @@ import discord
 import asyncio
 import sys
 import json
+import logging
 
 class ChannelLock:
 	server 			= None 	# id of server
@@ -345,6 +346,12 @@ async def on_message(message):
 		
 		else:
 			await client.send_message(message.channel, "Command not recognized. (!commands)")
+
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
 
 client.loop.create_task(check_for_empty_channels())
 #client.loop.create_task(debug_console())
