@@ -156,7 +156,12 @@ async def on_message(message):
 		# Complex commands 
 		elif command == 'report':
 			#toSay += "There are " + managedChannels.length + " reserved channels.\n"
-			toSay += "I have been praised " + str(happy) + " times and berated " + str(sad) + " times, so I am " + str((happy - sad)) + " happy."
+			emotion = happy - sad
+			toSay += "I have been praised " + str(happy) + " times and berated " + str(sad) + " times, so I am " + str(abs(emotion))
+			if emotion >= 0:
+				toSay += " happy."
+			else:
+				toSay += " sad."
 			await client.send_message(message.channel, toSay)
 		
 		elif command == 'lock':
