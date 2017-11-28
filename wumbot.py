@@ -4,6 +4,8 @@ import sys
 import json
 import logging
 
+LOGGING_FILENAME = 'wumbot.log'
+
 class ChannelLock:
 	server 			= None 	# id of server
 	info_channelid 	= "" 	# text channel in which to send status messages
@@ -13,7 +15,7 @@ class ChannelLock:
 	allowed_roles	= []	# all allowed roles
 	active 			= True
 	old_roles		= []	# store old roles that they may be restored
-
+	old_voice_limit = 0
 
 class Edgelord:
 	serverid 		= ""
@@ -26,19 +28,29 @@ locked_channels = []
 client = discord.Client()
 
 responses = None
+admins = None
 
-def reload_responses():
+def load_global_admins():
+	global admins
+	filename = "administrators.json"
+	file = open(filename, 'r')
+	admins = json.load(file)
+	file.close()
+
+def reload_data():
 	global responses
 	filename = "responses.json"
 	file = open(filename, 'r')
 	responses = json.load(file)
 	file.close()
+	load_global_admins()
 
 happy 	= 0
 sad 	= 0
 problem	= 0
 
 lastChannel = -1
+status_channels = {}
 
 async def refresh_channels():
 	for channel_lock in locked_channels:
@@ -53,6 +65,7 @@ async def refresh_channels():
 			reallow = discord.PermissionOverwrite()
 			reallow.speak = None
 			reallow.connect = None
+			await client.edit_channel(channel_lock.channel, user_limit=0)
 			await client.edit_channel_permissions(channel_lock.channel, channel_lock.server.default_role, reallow)
 			locked_channels.remove(channel_lock)
 
@@ -76,27 +89,15 @@ async def check_for_empty_channels():
 				reallow = discord.PermissionOverwrite()
 				reallow.speak = None
 				reallow.connect = None
+				await client.edit_channel(channel_lock.channel, user_limit=0)
 				await client.edit_channel_permissions(channel_lock.channel, channel_lock.server.default_role, reallow)
 				locked_channels.remove(channel_lock)
 		print ("channels checked")
 		await asyncio.sleep(69)
 
-async def debug_console():
-	await client.wait_until_ready()
-	while not client.is_closed:
-		command = input("> ")
-		if command == "a":
-			print (command)
-
-		elif command == "q":
-			await close_all()
-			await client.logout()
-			await client.close()
-			sys.exit()
-
 @client.event
 async def on_ready():
-	reload_responses()
+	reload_data()
 	print('Logged in as')
 	print(client.user.name)
 	print(client.user.id)
@@ -105,12 +106,24 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
+	# Ignore bots
+	if message.author.bot:
+		return
+
 	global responses
+	global admins
 	global happy
 	global problem
 	global sad
 	global last_channel
 	global locked_channels
+	global status_channels
+
+	is_global_admin = False
+	# Check if user is global admin (this list should be small and not take long to check)
+	if message.author.name in admins:
+		if admins[message.author.name] == message.author.id:
+			is_global_admin = True
 
 	if message.content.lower() in responses["fullmatch"]:
 		await client.send_message(message.channel, responses["fullmatch"][message.content.lower()])
@@ -227,6 +240,7 @@ async def on_message(message):
 			reallow = discord.PermissionOverwrite()
 			reallow.speak = None
 			reallow.connect = None
+			await client.edit_channel(channel_lock.channel, user_limit=0)
 			await client.edit_channel_permissions(channel_lock.channel, channel_lock.server.default_role, reallow)
 			locked_channels.remove(channel_lock)
 			await client.send_message(message.channel, toSay)
@@ -251,6 +265,10 @@ async def on_message(message):
 
 			for ch in locked_channels:
 				if ch.channel.id == message.author.voice_channel.id:
+					if len(message.role_mentions) == 0 and len(message.mentions) == 0:
+						toSay += "You must specify who to allow. (!allow *<@role/member>*)"
+						await client.send_message(message.channel, toSay)
+						return
 
 					toSay += "Allowing "
 					
@@ -289,6 +307,10 @@ async def on_message(message):
 
 			for ch in locked_channels:
 				if ch.channel.id == message.author.voice_channel.id:
+					if len(message.role_mentions) == 0 and len(message.mentions) == 0:
+						toSay += "You must specify who to forbid. (!forbid *<@role/member>*)"
+						await client.send_message(message.channel, toSay)
+						return
 
 					toSay += "Forbidding "
 					
@@ -317,12 +339,32 @@ async def on_message(message):
 			toSay += "Channel is not locked."
 			await client.send_message(message.channel, toSay)
 
-		elif command == 'reload':
-			toSay += 'Reloading data.'
-			reload_responses()
-			await refresh_channels()
-			happy = 0
-			sad = 0
+		elif command == 'limit':
+			if terms[1]:
+				for ch in locked_channels:
+					if ch.channel.id == message.author.voice_channel.id:
+						
+						toSay += "Limiting channel " + message.author.voice_channel.name + " to " + str(terms[1]) + " members."
+						await client.edit_channel(message.author.voice_channel, user_limit=terms[1])
+						await client.send_message(message.channel, toSay)
+						return
+
+				toSay += "Channel is not locked"
+				await client.send_message(message.channel, toSay)
+			else:
+				toSay += "Provide a number to which to set member limit (!limit *<n>*)"
+				await client.send_message(message.channel, toSay)
+		
+		elif command == 'unlimit':
+			for ch in locked_channels:
+				if ch.channel.id == message.author.voice_channel.id:
+					
+					toSay += "Unlimiting connections to " + message.author.voice_channel.name + "."
+					await client.edit_channel(message.author.voice_channel, user_limit=0)
+					await client.send_message(message.channel, toSay)
+					return
+
+			toSay += "Channel is not locked"
 			await client.send_message(message.channel, toSay)
 
 		elif command == 'problem':
@@ -335,24 +377,54 @@ async def on_message(message):
 			await client.send_message(message.channel, toSay)
 		
 		elif command == 'whoami':
-			toSay += message.author.name
+			toSay += message.author.name + "#" + message.author.discriminator
 			await client.send_message(message.channel, toSay)
 
 		elif command == 'whois':
 			if len(message.mentions) > 0:
 				for mention in message.mentions:
-					toSay += mention.name + " " + mention.id + "\n"
+					toSay += mention.name + "\n"
 				await client.send_message(message.channel, toSay)
-		
+
+		#Server admin commands
+		elif command == "status_channel" and message.author.top_role.permissions.administrator:
+			status_channels.update({message.server.id: message.channel})
+			toSay += "Setting this as WUMBot status channel for server."			
+			await client.send_message(message.channel, toSay)
+
+
+
+		#Global Admin commands
+		elif command == 'quit' and is_global_admin:
+			toSay += "WUMBot is going offline, unlocking all locked channels."
+			for server in status_channels:
+				await client.send_message(status_channels[server], toSay)
+			await close_all()
+			client.logout()
+			client.close()
+			sys.exit()
+
+		elif command == 'reload' and is_global_admin:
+			toSay += 'Reloading data.'
+			reload_data()
+			await refresh_channels()
+			happy = 0
+			sad = 0
+			await client.send_message(message.channel, toSay)
+
 		else:
 			await client.send_message(message.channel, "Command not recognized. (!commands)")
 
 logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+logger.setLevel(logging.INFO)
+handler = logging.FileHandler(filename=LOGGING_FILENAME, encoding='utf-8', mode='w')
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
 
 client.loop.create_task(check_for_empty_channels())
-#client.loop.create_task(debug_console())
-client.run('TOKEN HERE')
+
+filename = "token.json"
+file = open(filename, 'r')
+tokenObj = json.load(file)
+file.close()
+client.run(tokenObj['token'])
