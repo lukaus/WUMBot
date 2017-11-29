@@ -14,7 +14,7 @@ class ChannelLock:
 	members 		= [] 	# all members assigned to role
 	allowed_roles	= []	# all allowed roles
 	active 			= True
-	old_roles		= []	# store old roles that they may be restored
+	old_perms		= None	# store old permiossion overwrites that they may be restored
 	old_voice_limit = 0
 
 class Edgelord:
@@ -65,7 +65,7 @@ async def refresh_channels():
 			reallow = discord.PermissionOverwrite()
 			reallow.speak = None
 			reallow.connect = None
-			await client.edit_channel(channel_lock.channel, user_limit=0)
+			await client.edit_channel(channel_lock.channel, user_limit=channel_lock.old_voice_limit)
 			await client.edit_channel_permissions(channel_lock.channel, channel_lock.server.default_role, reallow)
 			locked_channels.remove(channel_lock)
 
@@ -89,7 +89,7 @@ async def check_for_empty_channels():
 				reallow = discord.PermissionOverwrite()
 				reallow.speak = None
 				reallow.connect = None
-				await client.edit_channel(channel_lock.channel, user_limit=0)
+				await client.edit_channel(channel_lock.channel, user_limit=channel_lock.old_voice_limit)
 				await client.edit_channel_permissions(channel_lock.channel, channel_lock.server.default_role, reallow)
 				locked_channels.remove(channel_lock)
 		print ("channels checked")
@@ -110,6 +110,7 @@ async def on_message(message):
 	if message.author.bot:
 		return
 
+	global check_channel_task
 	global responses
 	global admins
 	global happy
@@ -197,15 +198,10 @@ async def on_message(message):
 			allowed_members = voice_members
 			channel_lock.members 		= allowed_members
 			channel_lock.active 		= True
+			channel_lock.old_voice_limit= message.author.voice_channel.user_limit
+			channel_lock.old_perms 		= message.author.voice_channel.overwrites
 
 			# lock channel to role
-			perms = message.author.voice_channel.overwrites
-			print(str(len(perms)))
-
-
-			permissions = discord.Permissions.voice()
-			permissions.update(speak=True, join_voice=True)
-
 			permit_overwrite = discord.PermissionOverwrite()
 			permit_overwrite.connect = True
 			permit_overwrite.speak = True
@@ -245,7 +241,7 @@ async def on_message(message):
 			reallow = discord.PermissionOverwrite()
 			reallow.speak = None
 			reallow.connect = None
-			await client.edit_channel(channel_lock.channel, user_limit=0)
+			await client.edit_channel(channel_lock.channel, user_limit=channel_lock.old_voice_limit)
 			await client.edit_channel_permissions(channel_lock.channel, channel_lock.server.default_role, reallow)
 			locked_channels.remove(channel_lock)
 			await client.send_message(message.channel, toSay)
@@ -407,6 +403,7 @@ async def on_message(message):
 			await close_all()
 			client.logout()
 			client.close()
+			await check_channel_task.cancel()
 			sys.exit()
 
 		elif command == 'reload' and is_global_admin:
@@ -426,7 +423,7 @@ handler = logging.FileHandler(filename=LOGGING_FILENAME, encoding='utf-8', mode=
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
 
-client.loop.create_task(check_for_empty_channels())
+check_channel_task = client.loop.create_task(check_for_empty_channels())
 
 filename = "token.json"
 file = open(filename, 'r')
