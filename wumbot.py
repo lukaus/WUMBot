@@ -406,7 +406,7 @@ async def on_message(message):
 				await client.send_message(status_channels[server], toSay)
 			await close_all()
 			client.logout()
-			client.close()
+			client.cancel()
 			sys.exit()
 
 		elif command == 'reload' and is_global_admin:
