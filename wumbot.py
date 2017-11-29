@@ -8,14 +8,16 @@ LOGGING_FILENAME = 'wumbot.log'
 
 class ChannelLock:
 	server 			= None 	# id of server
-	info_channelid 	= "" 	# text channel in which to send status messages
 	channel 		= None	# target channel object
-	role 			= None	# object of created role
-	members 		= [] 	# all members assigned to role
-	allowed_roles	= []	# all allowed roles
-	active 			= True
+	
+	info_channelid 	= "" 	# text channel in which to send status messages
+	
 	old_perms		= None	# store old permiossion overwrites that they may be restored
 	old_voice_limit = 0
+	
+	role 			= None	# object of created role
+	allowed_roles	= []	# all allowed roles added by wumbot
+	members 		= [] 	# all members assigned to role
 
 class Edgelord:
 	serverid 		= ""
@@ -52,22 +54,29 @@ problem	= 0
 lastChannel = -1
 status_channels = {}
 
-async def refresh_channels():
+async def refresh_channels(alert):
 	for channel_lock in locked_channels:
 		# check the associated voice channel and unlock it if empty
-		channel = client.get_channel(channel_lock.channel.id)
-		if len(channel.voice_members) == 0:
-			infoID = channel_lock.info_channelid
-			infochannel = client.get_channel(infoID)
+		infoID = channel_lock.info_channelid
+		infochannel = client.get_channel(infoID)
+		if len(channel_lock.channel.voice_members) == 0:
+			await unlock_channel(channel_lock)
 			message = "Unlocking empty channel " + channel_lock.channel.name 
+			if alert is True:
+				print("Removed empty channel.")
 			await client.send_message(infochannel, message)
-			await client.delete_role(channel_lock.server, channel_lock.role) # this also removes the roles from users and channels
-			reallow = discord.PermissionOverwrite()
-			reallow.speak = None
-			reallow.connect = None
-			await client.edit_channel(channel_lock.channel, user_limit=channel_lock.old_voice_limit)
-			await client.edit_channel_permissions(channel_lock.channel, channel_lock.server.default_role, reallow)
-			locked_channels.remove(channel_lock)
+
+async def unlock_channel(channel_lock):
+	infoID = channel_lock.info_channelid
+	infochannel = client.get_channel(infoID)
+	await client.delete_role(channel_lock.server, channel_lock.role) # this also removes the roles from users and channels
+	for role in channel_lock.allowed_roles:
+		await client.delete_channel_permissions(channel_lock.channel_lock, role)
+	for pair in channel_lock.old_perms:
+		await client.edit_channel_permissions(channel_lock.channel, pair[0], pair[1])
+	await client.edit_channel(channel_lock.channel, user_limit=channel_lock.old_voice_limit)	
+	locked_channels.remove(channel_lock)
+
 
 async def close_all():
 	for channel_lock in locked_channels:
@@ -77,31 +86,18 @@ async def close_all():
 async def check_for_empty_channels():
 	await client.wait_until_ready()
 	while not client.is_closed:
-		for channel_lock in locked_channels:
-			# check the associated voice channel and unlock it if empty
-			channel = client.get_channel(channel_lock.channel.id)
-			if len(channel.voice_members) == 0:
-				infoID = channel_lock.info_channelid
-				infochannel = client.get_channel(infoID)
-				message = "Unlocking empty channel " + channel_lock.channel.name 
-				await client.send_message(infochannel, message)
-				await client.delete_role(channel_lock.server, channel_lock.role) # this also removes the roles from users and channelsreallow = discord.PermissionOverwrite()
-				reallow = discord.PermissionOverwrite()
-				reallow.speak = None
-				reallow.connect = None
-				await client.edit_channel(channel_lock.channel, user_limit=channel_lock.old_voice_limit)
-				await client.edit_channel_permissions(channel_lock.channel, channel_lock.server.default_role, reallow)
-				locked_channels.remove(channel_lock)
-		print ("channels checked")
+		await refresh_channels(True)
+		sys.stdout.write('.')
+		sys.stdout.flush()
 		await asyncio.sleep(69)
 
 @client.event
 async def on_ready():
 	reload_data()
-	print('Logged in as')
+	print('Logging in:')
 	print(client.user.name)
 	print(client.user.id)
-	print('------')
+	print('-=-=-=-=-=-=-=-=-=-=-')
 	await client.change_presence(game=discord.Game(name='Say !help'))
 
 @client.event
@@ -197,7 +193,6 @@ async def on_message(message):
 			channel_lock.role 			= new_role
 			allowed_members = voice_members
 			channel_lock.members 		= allowed_members
-			channel_lock.active 		= True
 			channel_lock.old_voice_limit= message.author.voice_channel.user_limit
 			channel_lock.old_perms 		= message.author.voice_channel.overwrites
 
@@ -206,9 +201,16 @@ async def on_message(message):
 			permit_overwrite.connect = True
 			permit_overwrite.speak = True
 
+
 			forbid_overwrite = discord.PermissionOverwrite()
 			forbid_overwrite.connect = False
 			forbid_overwrite.speak = False
+
+
+
+			for pair in channel_lock.old_perms:
+				await client.edit_channel_permissions(message.author.voice_channel, pair[0], None)
+			await client.edit_channel(message.author.voice_channel, user_limit=0)
 
 			await client.edit_channel_permissions(message.author.voice_channel, new_role, permit_overwrite)
 			await client.edit_channel_permissions(message.author.voice_channel, message.server.default_role, forbid_overwrite)
@@ -222,7 +224,7 @@ async def on_message(message):
 			if message.author.voice_channel is None:
 				toSay += "Since you are not in a voice channel, I will unlock all empty channels."
 				await client.send_message(message.channel, toSay)
-				await refresh_channels()
+				await refresh_channels(False)
 				return
 			
 			channel_lock = None
@@ -236,18 +238,12 @@ async def on_message(message):
 				await client.send_message(message.channel, toSay)
 				return
 
-			toSay += "Unlocking channel " + channel_lock.channel.name
-			await client.delete_role(channel_lock.server, channel_lock.role)
-			reallow = discord.PermissionOverwrite()
-			reallow.speak = None
-			reallow.connect = None
-			await client.edit_channel(channel_lock.channel, user_limit=channel_lock.old_voice_limit)
-			await client.edit_channel_permissions(channel_lock.channel, channel_lock.server.default_role, reallow)
-			locked_channels.remove(channel_lock)
+			await unlock_channel(channel_lock)
+			toSay = "Unlocking channel " + channel_lock.channel.name 
 			await client.send_message(message.channel, toSay)
 		
 		elif command == 'locks':
-			await refresh_channels()
+			await refresh_channels(False)
 			if len(locked_channels) > 0:
 				toSay += '__**Current locks:**__\n'
 				for ch in locked_channels:
@@ -286,14 +282,18 @@ async def on_message(message):
 							ch.members.append(mem)
 
 					index = len(message.mentions)
+					permit_overwrite = discord.PermissionOverwrite()
+					permit_overwrite.connect = True
+					permit_overwrite.speak = True
 
 					for role in message.role_mentions:
 						# add role to channel permitted NYI
+						await client.edit_channel_permissions(ch.channel, role, permit_overwrite)
+						ch.allowed_roles.append(role)
 						toSay += " : " + role.mention
 						
 					toSay += " to access " + message.author.voice_channel.name
-					if len(message.role_mentions) > 0:
-						toSay += '\nNote: allow @role is not yet implemented and will have no effect'
+
 					await client.send_message(message.channel, toSay)
 					return
 			
@@ -328,12 +328,15 @@ async def on_message(message):
 					index = len(message.mentions)
 
 					for role in message.role_mentions:
-						# add role to channel permitted NYI
-						toSay += " : " + role.mention
+						if role in ch.allowed_roles:
+							await client.delete_channel_permissions(ch.channel, role)
+							ch.allowed_roles.remove(role)
+							# remove role to channel permitted NYI
+							toSay += " : " + role.mention
+						else:
+							await client.send_message(message.channel, role.mention + " currently is not allowed.")
 						
 					toSay += " to access " + message.author.voice_channel.name
-					if len(message.role_mentions) > 0:
-						toSay += '\nNote: allow @role is not yet implemented and will have no effect'
 					await client.send_message(message.channel, toSay)
 					return
 			
@@ -393,8 +396,6 @@ async def on_message(message):
 			toSay += "Setting this as WUMBot status channel for server."			
 			await client.send_message(message.channel, toSay)
 
-
-
 		#Global Admin commands
 		elif command == 'quit' and is_global_admin:
 			toSay += "WUMBot is going offline, unlocking all locked channels."
@@ -409,7 +410,7 @@ async def on_message(message):
 		elif command == 'reload' and is_global_admin:
 			toSay += 'Reloading data.'
 			reload_data()
-			await refresh_channels()
+			await refresh_channels(False)
 			happy = 0
 			sad = 0
 			await client.send_message(message.channel, toSay)
