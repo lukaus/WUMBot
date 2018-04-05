@@ -60,6 +60,11 @@ bank_file.close()
 for key in bank:
 	gamble_timer[key] = 0
 
+banklog_f = open("banklog.json", 'r')
+banklog = json.load(banklog_f)
+banklog_f.close()
+
+
 def bank_sort(vals, names):
 	for i in range(1, len(vals)):
 		j = i-1 
@@ -127,6 +132,7 @@ async def close_all():
 
 async def check_for_empty_channels():
 	global bank
+	global banklog
 	await client.wait_until_ready()
 	while not client.is_closed:
 		await refresh_channels(True)
@@ -142,6 +148,8 @@ async def check_for_empty_channels():
 		#write bank to file
 		with open('bank.json', 'w') as fp:
 			json.dump(bank, fp)
+		with open('banklog.json', 'w') as blfp):
+			json.dump(banklog, blfp)
 		sys.stdout.write('.')
 		sys.stdout.flush()
 		await asyncio.sleep(69)
@@ -172,6 +180,7 @@ async def on_message(message):
 	global locked_channels
 	global status_channels
 	global bank
+	global banklog
 	global gamble_timer
 	global de_maps
 	global gamble_cooldown
@@ -263,8 +272,12 @@ async def on_message(message):
 			for i in range(0, len(buck_list)):
 				if buck_list[i] > your_credit:
 					richer += 1
-			toSay = "There are " + str(richer) + " people richer than you."
-			toSay += "\nThe richest 3 people are:\n```{}\t-\t{}\n{}\t-\t{}\n{}\t-\t{}```".format(buck_list[0], name_list[0],buck_list[1], name_list[1],buck_list[2], name_list[2])
+			toSay = "There are " + str(richer) + " people with more wealth than your " + bank[message.author.id]
+			if len(buck_list > 2):
+				toSay += "\nThe richest 3 people are:\n```{}\t-\t{}\n{}\t-\t{}\n{}\t-\t{}```".format(buck_list[0], name_list[0],buck_list[1], name_list[1],buck_list[2], name_list[2])
+			else:
+				toSay += "\nThe richest person is:\n```{}\t-\t{}```".format(buck_list[0], name_list[0])
+			toSay += "I have payed out " + banklog[0] + " and recieved " + banklog[1] + " due to failed wagers."
 			await client.send_message(message.channel, toSay)
 
 		elif command == 'gamble':
@@ -301,12 +314,15 @@ async def on_message(message):
 				if gamble_roll == 100:
 					toSay = "You rolled: " + str(gamble_roll) + "\nCritical hit! Quadruple earnings! " + message.author.display_name + " wagered " + str(wager) + " WUMBucks and won " + str((wager*4))+ "!!!!"
 					bank[message.author.id] += wager * 4
+					banklog[0] += wager * 4
 				else:
 					toSay = "You rolled: " + str(gamble_roll) + "\nWinner! " + message.author.display_name + " wagered " + str(wager) + " WUMBucks and won " + str((wager*2))+ "!"
 					bank[message.author.id] += wager * 2
+					banklog[0] += wager * 2
 			else:
 				toSay = "You rolled: " + str(gamble_roll) + "\n" + message.author.display_name + " wagered " + str(wager) + " WUMBucks and lost..."
 				bank[message.author.id] -= wager
+					banklog[1] += wager
 				
 			await client.send_message(message.channel, toSay)
 
