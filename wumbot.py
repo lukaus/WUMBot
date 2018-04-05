@@ -3,6 +3,8 @@ import asyncio
 import sys
 import json
 import logging
+import random
+import time
 
 LOGGING_FILENAME = 'wumbot.log'
 
@@ -46,6 +48,46 @@ def reload_data():
 	responses = json.load(file)
 	file.close()
 	load_global_admins()
+# gamble stuff
+bank = {} # maps user id to their credits
+gamble_timer = {} # maps user id to their last gamble
+gamble_cooldown = 69
+#load these from json file
+bank_filename = "bank.json"
+bank_file = open(bank_filename, 'r')
+bank = json.load(bank_file)
+bank_file.close()
+for key in bank:
+	gamble_timer[key] = 0
+
+def bank_sort(vals, names):
+	for i in range(1, len(vals)):
+		j = i-1 
+		key = vals[i]
+		temp = names[i]
+		while (vals[j] > key) and (j >= 0):
+			vals[j+1] = vals[j]
+			names[j+1] = names[j]
+			j -= 1
+		vals[j+1] = key
+		names[j+1] = temp
+	vals.reverse()
+	names.reverse()
+
+#CS map list
+de_maps = ["Cobblestone", "Dust II", "Inferno", "Mirage", "Nuke", "Train", "Cache", "Overpass"]
+
+#roulette stuff
+barrel = [0, 0, 0, 0, 0, 1]
+hammer = 0
+
+def get_hammer():
+	global hammer
+	hammer = hammer + 1
+	if hammer > 5:
+		hammer = 0
+	return hammer
+
 
 happy 	= 0
 sad 	= 0
@@ -84,9 +126,22 @@ async def close_all():
 		locked_channels.remove(channel_lock)
 
 async def check_for_empty_channels():
+	global bank
 	await client.wait_until_ready()
 	while not client.is_closed:
 		await refresh_channels(True)
+		# update bank
+		for server in client.servers:
+			for channel in server.channels:
+				if channel != server.afk_channel:
+					for member in channel.voice_members:
+						if member.id not in bank:
+							bank[member.id] = 5
+							gamble_timer[member.id] = 0
+						bank[member.id] += 1
+		#write bank to file
+		with open('bank.json', 'w') as fp:
+			json.dump(bank, fp)
 		sys.stdout.write('.')
 		sys.stdout.flush()
 		await asyncio.sleep(69)
@@ -105,7 +160,8 @@ async def on_message(message):
 	# Ignore bots
 	if message.author.bot:
 		return
-
+	global barrel
+	global hammer
 	global check_channel_task
 	global responses
 	global admins
@@ -115,6 +171,10 @@ async def on_message(message):
 	global last_channel
 	global locked_channels
 	global status_channels
+	global bank
+	global gamble_timer
+	global de_maps
+	global gamble_cooldown
 
 	is_global_admin = False
 	# Check if user is global admin (this list should be small and not take long to check)
@@ -137,8 +197,9 @@ async def on_message(message):
 	# Startswith commands
 	if message.content.startswith('!'):
 		print(message.content)
+		# terms are each word that appear in the message. Term[0] is the command, etc
 		terms = message.content.split()
-		command = terms[0][1:].lower()
+		command = terms[0][1:].lower() # trim the ! off of the first term to get the command ('!help' -> 'help')
 		toSay = ""
 
 		if command in responses["startswith"]:
@@ -149,8 +210,135 @@ async def on_message(message):
 
 		elif command in responses["happy"]["startswith"]:
 			happy = happy + responses["happy"]["startswith"][command]
+		
+		#roll a dX = !roll 6
+		elif command == 'roll':
+			if len(terms) != 2:
+				await client.send_message(message.channel, "Syntax is: \n\t!roll <die type>\n\t ex: !roll 20")
+				return
+			elif terms[1].lower().startswith('d'):
+				terms[1] = terms[1][1:]
+			if  terms[1].isdigit() == False or int(terms[1]) < 1:
+				await client.send_message(message.channel, "Nice try... Must be a positive integer.\n\t ex: !roll 20")
+			result = random.randint(1, int(terms[1]))
+			await client.send_message(message.channel, str(result))
+			return
+		# cs map
+		elif command == 'maps':
+			random.shuffle(de_maps)
+			if len(terms) < 2 or terms[1].isdigit() == False or int(terms[1]) > len(de_maps):
+				for map in de_maps:
+					toSay += map + ", "
+			elif int(terms[1]) == 0:
+				await client.send_message(message.channel, "CS:GO to the polls")
+				return
+			else:
+				num_maps = int(terms[1])
+				iter = 0
+				while iter < num_maps:
+					toSay += de_maps[iter] + ", "
+					iter += 1
+			toSay = toSay[:-2]
+			await client.send_message(message.channel, toSay)
 
+		elif command == 'coinflip':
+			coin = random.randint(1,2)
+			if coin == 1:
+				await client.send_message(message.channel, "Heads.")
+			else:
+				await client.send_message(message.channel, "Tails.")
+
+		#gambling
+		elif command == 'riches':
+			buck_list = []
+			name_list = []
+			richer = 0
+			your_credit = bank[message.author.id]
+
+			for member in message.server.members:
+				if member.id in bank:
+					buck_list.append(bank[member.id])
+					name_list.append(member.display_name)
+			bank_sort(buck_list, name_list)
+			for i in range(0, len(buck_list)):
+				if buck_list[i] > your_credit:
+					richer += 1
+			toSay = "There are " + str(richer) + " people richer than you."
+			toSay += "\nThe richest 3 people are:\n```{}\t-\t{}\n{}\t-\t{}\n{}\t-\t{}```".format(buck_list[0], name_list[0],buck_list[1], name_list[1],buck_list[2], name_list[2])
+			await client.send_message(message.channel, toSay)
+
+		elif command == 'gamble':
+			#validate command 
+			if len(terms) != 2:
+				await client.send_message(message.channel, "Syntax is: \n\t!gamble <amount>\n\t ex: !gamble 20\n\t*See '!gamble help'*")
+				return
+			if  terms[1].isdigit() == False:
+				if terms[1].lower() == 'help':
+					await client.send_message(message.channel, "!gamble <wager> allows you to wager your WUMBucks against me. If your roll (between 1 and 100) is above 55, you will earn double your wager. A roll of exactly 100 will earn you 4 times your wager. Otherwise, I will keep it all.\nYou can only gamble once every 5 minutes, and you earn a free WUMBuck every 69 seconds you spend in a voice channel (other than an AFK channel).\n'!bank' will display your balance. Good luck!")
+				else:
+					await client.send_message(message.channel, "Syntax is: \n\t!gamble <amount>\n\t ex: !gamble 20\n\t*See '!gamble help'*")				
+				return
+			if int(terms[1]) < 1:
+				await client.send_message(message.channel, "Nice try... Must be a positive integer.\n\t ex: !gamble 20\n\t*See '!gamble help'*")
+			if message.author.id not in bank:
+				bank[message.author.id] = 5
+				gamble_timer[message.author.id] = 0
+				toSay = "No balance detected for " + message.author.display_name +", initializing user's bank with a 5 WUMBuck credit."
+				await client.send_message(message.channel, toSay)
+			# process command
+			if (time.time() < (gamble_timer[message.author.id] + gamble_cooldown)):
+				cooldown = (gamble_timer[message.author.id] + gamble_cooldown) - time.time()
+				await client.send_message(message.channel, "You have gambled too recently. Please wait exactly " + str(cooldown) + " seconds.")
+				return
+			gamble_timer[message.author.id] = time.time()
+			wager = int(terms[1])
+			if wager > bank[message.author.id]:
+				toSay = "A " + str(wager) + " WUMBuck wager exceeds your balance of " + str(bank[message.author.id]) + "..."
+				await client.send_message(message.channel, toSay)
+				return
+			gamble_roll = random.randint(1, 100)
+			if gamble_roll > 55:
+				if gamble_roll == 100:
+					toSay = "You rolled: " + str(gamble_roll) + "\nCritical hit! Quadruple earnings! " + message.author.display_name + " wagered " + str(wager) + " WUMBucks and won " + str((wager*4))+ "!!!!"
+					bank[message.author.id] += wager * 4
+				else:
+					toSay = "You rolled: " + str(gamble_roll) + "\nWinner! " + message.author.display_name + " wagered " + str(wager) + " WUMBucks and won " + str((wager*2))+ "!"
+					bank[message.author.id] += wager * 2
+			else:
+				toSay = "You rolled: " + str(gamble_roll) + "\n" + message.author.display_name + " wagered " + str(wager) + " WUMBucks and lost..."
+				bank[message.author.id] -= wager
+				
+			await client.send_message(message.channel, toSay)
+
+		elif command == 'bank':
+			if message.author.id not in bank:
+					bank[message.author.id] = 5
+					gamble_timer[message.author.id] = 0
+					toSay = "No balance detected for " + message.author.display_name +", initializing user's bank with a 5 WUMBuck credit."
+					await client.send_message(message.channel, toSay)
+			toSay = message.author.display_name + " has a balance of " + str(bank[message.author.id]) + " WUMBucks."
+			await client.send_message(message.channel, toSay)
+			return
+		# Roulette
+		elif command == "roulette":
+			roll = get_hammer()
+			print(roll)
+			print(barrel)
+			if barrel[roll] == 1:
+				await client.send_message(message.channel, "Bang. You're dead.")
+				random.shuffle(barrel)
+			else:
+				await client.send_message(message.channel, "*click*")
+		elif command == "spin":
+			roll = get_hammer()
+			random.shuffle(barrel)
+			print(roll)
+			print(barrel)
 		# Complex commands 
+		elif command == "vim":
+			await client.send_file(message.channel, 'vim.png')
+		elif command == "garfield" or command == "07/27/1978":
+			await client.send_file(message.channel, 'garfield.png')
 		elif command == 'report':
 			#toSay += "There are " + managedChannels.length + " reserved channels.\n"
 			emotion = happy - sad
@@ -375,6 +563,7 @@ async def on_message(message):
 			if problem < 5:
 				toSay += "Reporting problem to Lukaus"
 				# alert to problem
+				print("Problem reported by " + message.author.name)
 			else:
 				toSay += "The problem has been reported, quit spamming me please.\n\t\t- Lukaus"
 			problem = problem + 1
