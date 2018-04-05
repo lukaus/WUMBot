@@ -148,7 +148,7 @@ async def check_for_empty_channels():
 		#write bank to file
 		with open('bank.json', 'w') as fp:
 			json.dump(bank, fp)
-		with open('banklog.json', 'w') as blfp):
+		with open('banklog.json', 'w') as blfp:
 			json.dump(banklog, blfp)
 		sys.stdout.write('.')
 		sys.stdout.flush()
