@@ -322,7 +322,7 @@ async def on_message(message):
 			else:
 				toSay = "You rolled: " + str(gamble_roll) + "\n" + message.author.display_name + " wagered " + str(wager) + " WUMBucks and lost..."
 				bank[message.author.id] -= wager
-					banklog[1] += wager
+				banklog[1] += wager
 				
 			await client.send_message(message.channel, toSay)
 
