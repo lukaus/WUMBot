@@ -272,12 +272,12 @@ async def on_message(message):
 			for i in range(0, len(buck_list)):
 				if buck_list[i] > your_credit:
 					richer += 1
-			toSay = "There are " + str(richer) + " people with more wealth than your " + bank[message.author.id]
-			if len(buck_list > 2):
+			toSay = "There are " + str(richer) + " people with more wealth than your " + str(bank[message.author.id])
+			if len(buck_list) > 2:
 				toSay += "\nThe richest 3 people are:\n```{}\t-\t{}\n{}\t-\t{}\n{}\t-\t{}```".format(buck_list[0], name_list[0],buck_list[1], name_list[1],buck_list[2], name_list[2])
 			else:
 				toSay += "\nThe richest person is:\n```{}\t-\t{}```".format(buck_list[0], name_list[0])
-			toSay += "I have payed out " + banklog[0] + " and recieved " + banklog[1] + " due to failed wagers."
+			toSay += "I have payed out " + str(banklog[0]) + " and recieved " + str(banklog[1]) + " due to failed wagers."
 			await client.send_message(message.channel, toSay)
 
 		elif command == 'gamble':
@@ -297,6 +297,7 @@ async def on_message(message):
 				bank[message.author.id] = 5
 				gamble_timer[message.author.id] = 0
 				toSay = "No balance detected for " + message.author.display_name +", initializing user's bank with a 5 WUMBuck credit."
+				banklog[0] += 5
 				await client.send_message(message.channel, toSay)
 			# process command
 			if (time.time() < (gamble_timer[message.author.id] + gamble_cooldown)):
@@ -331,6 +332,7 @@ async def on_message(message):
 					bank[message.author.id] = 5
 					gamble_timer[message.author.id] = 0
 					toSay = "No balance detected for " + message.author.display_name +", initializing user's bank with a 5 WUMBuck credit."
+					banklog[0] += 5
 					await client.send_message(message.channel, toSay)
 			toSay = message.author.display_name + " has a balance of " + str(bank[message.author.id]) + " WUMBucks."
 			await client.send_message(message.channel, toSay)
