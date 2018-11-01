@@ -97,6 +97,7 @@ def get_hammer():
 happy 	= 0
 sad 	= 0
 problem	= 0
+uptime_sec = 0
 
 lastChannel = -1
 status_channels = {}
@@ -153,6 +154,7 @@ async def check_for_empty_channels():
 		sys.stdout.write('.')
 		sys.stdout.flush()
 		await asyncio.sleep(69)
+                uptime_sec += 69
 
 @client.event
 async def on_ready():
@@ -202,6 +204,18 @@ async def on_message(message):
 
 	if message.content.lower() == "god bot":
 		await client.send_file(message.channel, 'god_bot.jpg')
+        
+        if message.content.startswith("gar "):
+            send = ""
+            big = True
+            for char in message.content[4:]:
+                big = not big
+                if big: # big if true
+                    send += char.upper()
+                else:
+                    send += char.lower()
+            await client.send_message(message.channel, send)
+            await client.delete_message(message)
 
 	# Startswith commands
 	if message.content.startswith('!'):
