@@ -233,6 +233,16 @@ async def on_message(message):
 
 		elif command in responses["happy"]["startswith"]:
 			happy = happy + responses["happy"]["startswith"][command]
+
+                elif command == 'emote':
+                    emote_msg = None
+                    for i in range(1,11):
+                        with open('emote/'+str(i)+'.txt') as this_emote:
+                            if emote_msg_id == None:
+                                msg = await client.send_message(message.channel, this_emote)
+                            else:
+                                await asyncio.sleep(0.5)
+                                await client.edit_message(emote_msg, line)
 		
 		#roll a dX = !roll 6
 		elif command == 'roll':
