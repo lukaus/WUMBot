@@ -236,14 +236,16 @@ async def on_message(message):
 
                 elif command == 'emote':
                     emote_msg = None
-                    for i in range(1,11):
-                        with open('emote/'+str(i)+'.txt') as this_emote:
-                            if emote_msg_id == None:
-                                msg = await client.send_message(message.channel, this_emote)
+                    for i in range(1,12):
+                        with open('emote/'+str(i)+'.txt', 'r') as this_emote:
+                            line = this_emote.read()
+                            if emote_msg == None:
+                                emote_msg = await client.send_message(message.channel, line)
                             else:
                                 await asyncio.sleep(0.5)
                                 await client.edit_message(emote_msg, line)
-		
+		    return
+
 		#roll a dX = !roll 6
 		elif command == 'roll':
 			if len(terms) != 2:
