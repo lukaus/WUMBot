@@ -12,4 +12,4 @@ WUMBot expects a properly formatted JSON file "token.json" in its directory with
 
 
 
-Bot will likely need to be granted (at least some) administrative privledges in order to be able to change channel permissions for the lock/unlock commands
+Bot will likely need to be granted (at least some) administrative privledges in order to be able to change channel permissions for the lock/unlock commands; these commands change user roles and channel settings
