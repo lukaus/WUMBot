@@ -214,6 +214,7 @@ async def on_message(message):
                     send += char.upper()
                 else:
                     send += char.lower()
+            await client.send_file(message.channel, 'gar.png')
             await client.send_message(message.channel, send)
             await client.delete_message(message)
 
