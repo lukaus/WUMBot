@@ -341,20 +341,20 @@ async def on_message(message):
                                 toSay = "A " + str(wager) + " WUMBuck wager exceeds your balance of " + str(bank[message.author.id]) + "..."
                                 await client.send_message(message.channel, toSay)
                                 return
+                        bank[message.author.id] -= wager
                         gamble_roll = random.randint(1, 100)
                         if gamble_roll > 55:
                                 if gamble_roll == 100:
-                                        toSay = "You rolled: " + str(gamble_roll) + "\nCritical hit! Quadruple earnings! " + message.author.display_name + " wagered " + str(wager) + " WUMBucks and won " + str((wager*4))+ "!!!!"
+                                        toSay = "You rolled: " + str(gamble_roll) + "\nCritical hit! Quadruple earnings! " + message.author.display_name + " wagered " + str(wager) + " WUMBucks and won back " + str((wager*4))+ "!!!!"
                                         bank[message.author.id] += wager * 4
                                         banklog[0] += wager * 4
                                 else:
-                                        toSay = "You rolled: " + str(gamble_roll) + "\nWinner! " + message.author.display_name + " wagered " + str(wager) + " WUMBucks and won " + str((wager*2))+ "!"
+                                        toSay = "You rolled: " + str(gamble_roll) + "\nWinner! " + message.author.display_name + " doubled a wager of " + str(wager) + " WUMBucks!"
                                         bank[message.author.id] += wager * 2
                                         banklog[0] += wager * 2
                         else:
                                 toSay = "You rolled: " + str(gamble_roll) + "\n" + message.author.display_name + " wagered " + str(wager) + " WUMBucks and lost..."
-                                bank[message.author.id] -= wager
-                                banklog[1] += wager
+                        banklog[1] += wager
                                 
                         await client.send_message(message.channel, toSay)
 
