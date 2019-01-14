@@ -5,6 +5,7 @@ import json
 import logging
 import random
 import time
+import os
 
 LOGGING_FILENAME = 'wumbot.log'
 
@@ -64,6 +65,8 @@ banklog_f = open("banklog.json", 'r')
 banklog = json.load(banklog_f)
 banklog_f.close()
 
+random.seed(os.getpid() * time.perf_counter())
+
 def bank_sort(vals, names):
         for i in range(1, len(vals)):
                 j = i-1 
@@ -92,6 +95,85 @@ def get_hammer():
                 hammer = 0
         return hammer
 
+def roll_dice(msg, exp = False):
+    try:
+        cur = "+"
+        comps = []
+        for c in msg:
+            if c == " ":
+                continue
+            if c == "+" or c == "-":
+                comps.append(cur)
+                cur = c
+            else:
+                cur += c
+        comps.append(cur)
+
+        tot = 0
+        retstr = ""
+        for c in comps:
+            op = 1
+            if c[0] == "-":
+                op = -1
+
+            c = c[1:]
+            if c[0] == "d":
+                c = "1" + c
+            if "d" in c:
+                # dice roll
+                nd = c.split('d')
+                n = int(nd[0])
+                if n > 500:
+                    n = 1
+                d = int(nd[1])
+                if exp == True and d > 1:
+                    add_roll = True
+                    roll_again = False 
+                    roll = int(random.randint(1,d))
+                    if roll == d:
+                        roll_again = True
+                    while add_roll == True or roll_again == True:
+                        if op == 1:
+                            retstr += " + "
+                        else:
+                            retstr += " - "
+                        retstr += "[" + str(roll)
+                        if roll == d:  
+                            retstr += "!" 
+                        retstr += "]" 
+                        tot += roll * op
+                        if roll_again == True:
+                            roll = int(random.randint(1,d))
+                            add_roll = True
+                            if roll == d:
+                                roll_again == True
+                            else:
+                                roll_again = False
+                        else:
+                            add_roll = False
+
+                else:
+                    for x in range(0, n):
+                        if op == 1:
+                            retstr += " + "
+                        else:
+                            retstr += " - "
+                        roll = random.randint(1,d) * op
+                        retstr += "[" +str(roll)+"]"
+                        tot += roll 
+            else:
+                if op == 1:
+                    retstr += " + "
+                else:
+                    retstr += " - "
+                retstr += c
+                tot += int(c) * op
+            retstr += "\n"
+        return retstr[3:] + "\n = " + str(tot),tot
+    except:
+        return "Invalid parameters. Use something like '!r <NdD> <+|-> <n>', or '!re' for exploding dice.\nIE '!re 1d12 + 2 - 1d20'", 0 
+
+
 
 happy   = 0
 sad     = 0
@@ -102,27 +184,27 @@ lastChannel = -1
 status_channels = {}
 
 async def refresh_channels(alert):
-        for channel_lock in locked_channels:
-                # check the associated voice channel and unlock it if empty
-                infoID = channel_lock.info_channelid
-                infochannel = client.get_channel(infoID)
-                if len(channel_lock.channel.voice_members) == 0:
-                        await unlock_channel(channel_lock)
-                        message = "Unlocking empty channel " + channel_lock.channel.name 
-                        if alert is True:
-                                print("Removed empty channel.")
-                        await client.send_message(infochannel, message)
-
-async def unlock_channel(channel_lock):
+    for channel_lock in locked_channels:
+        # check the associated voice channel and unlock it if empty
         infoID = channel_lock.info_channelid
         infochannel = client.get_channel(infoID)
-        await client.delete_role(channel_lock.server, channel_lock.role) # this also removes the roles from users and channels
-        for role in channel_lock.allowed_roles:
-                await client.delete_channel_permissions(channel_lock.channel_lock, role)
-        for pair in channel_lock.old_perms:
-                await client.edit_channel_permissions(channel_lock.channel, pair[0], pair[1])
-        await client.edit_channel(channel_lock.channel, user_limit=channel_lock.old_voice_limit)        
-        locked_channels.remove(channel_lock)
+        if len(channel_lock.channel.voice_members) == 0:
+            await unlock_channel(channel_lock)
+            message = "Unlocking empty channel " + channel_lock.channel.name 
+            if alert is True:
+                print("Removed empty channel.")
+            await client.send_message(infochannel, message)
+
+async def unlock_channel(channel_lock):
+    infoID = channel_lock.info_channelid
+    infochannel = client.get_channel(infoID)
+    await client.delete_role(channel_lock.server, channel_lock.role) # this also removes the roles from users and channels
+    for role in channel_lock.allowed_roles:
+        await client.delete_channel_permissions(channel_lock.channel_lock, role)
+    for pair in channel_lock.old_perms:
+        await client.edit_channel_permissions(channel_lock.channel, pair[0], pair[1])
+    await client.edit_channel(channel_lock.channel, user_limit=channel_lock.old_voice_limit)        
+    locked_channels.remove(channel_lock)
 
 
 async def close_all():
@@ -218,6 +300,17 @@ async def on_message(message):
             await client.send_message(message.channel, send)
             await client.delete_message(message)
 
+        if message.content.startswith("/r ") or message.content.startswith("/re "):
+            exp = False
+            if message.content.startswith("/re "):
+                exp = True
+            
+            
+
+
+        if message.content.startswith("/r"):
+            message.content = "!r" + message.content[2:]
+
         # Startswith commands
         if message.content.startswith('!'):
                 print(message.content)
@@ -248,16 +341,11 @@ async def on_message(message):
                     return
                 
                 #roll a dX = !roll 6
-                elif command == 'roll':
-                        if len(terms) != 2:
-                                await client.send_message(message.channel, "Syntax is: \n\t!roll <die type>\n\t ex: !roll 20")
-                                return
-                        elif terms[1].lower().startswith('d'):
-                                terms[1] = terms[1][1:]
-                        if  terms[1].isdigit() == False or int(terms[1]) < 1:
-                                await client.send_message(message.channel, "Nice try... Must be a positive integer.\n\t ex: !roll 20")
-                        result = random.randint(1, int(terms[1]))
-                        await client.send_message(message.channel, str(result))
+                elif command == 'r' or command == "re" or command == "roll":
+                        if(command == "re"):
+                            await client.send_message(message.channel, roll_dice("".join(terms[1:]), True)[0])
+                        else:
+                            await client.send_message(message.channel, roll_dice("".join(terms[1:]), False)[0])
                         return
                 # cs map
                 elif command == 'maps':
