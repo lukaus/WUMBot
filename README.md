@@ -17,5 +17,6 @@ Bot will likely need to be granted (at least some) administrative privledges in 
 
 
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
 To add WUMBot to your server, click:
 https://discordapp.com/oauth2/authorize?client_id=378396132470030337&scope=bot
