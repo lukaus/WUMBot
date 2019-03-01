@@ -43,12 +43,21 @@ def load_global_admins():
         file.close()
 
 def reload_data():
+        global admin_ids
+        global forbidden_channels
         global responses
         filename = "responses.json"
         file = open(filename, 'r')
         responses = json.load(file)
         file.close()
         load_global_admins()
+        admin_file = open('admins.json', 'r')
+        ignore_file = open('ignore_channels.json', 'r')
+        admin_ids = json.load(admin_file)
+        forbidden_channels = json.load(ignore_file) 
+        admin_file.close()
+        ignore_file.close()
+
 # gamble stuff
 bank = {} # maps user id to their credits
 gamble_timer = {} # maps user id to their last gamble
@@ -64,6 +73,13 @@ for key in bank:
 banklog_f = open("banklog.json", 'r')
 banklog = json.load(banklog_f)
 banklog_f.close()
+
+admin_file = open('admins.json', 'r')
+ignore_file = open('ignore_channels.json', 'r')
+admin_ids = json.load(admin_file)
+forbidden_channels = json.load(ignore_file) 
+admin_file.close()
+ignore_file.close()
 
 random.seed(os.getpid() * time.perf_counter())
 
@@ -253,6 +269,8 @@ async def on_message(message):
         if message.author.bot:
                 return
         global barrel
+        global admin_ids
+        global forbidden_channels
         global hammer
         global check_channel_task
         global responses
@@ -269,11 +287,19 @@ async def on_message(message):
         global de_maps
         global gamble_cooldown
 
+        if message.channel.id in forbidden_channels:
+            return
+
+        if message.channel.name == 'beedo':
+            if(message.content.lower() != "beedo"):
+                await client.delete_message(message)
+                await client.send_message(message.channel, "Beedo")
+            return
+
         is_global_admin = False
         # Check if user is global admin (this list should be small and not take long to check)
-        if message.author.name in admins:
-                if admins[message.author.name] == message.author.id:
-                        is_global_admin = True
+        if message.author.id in admin_ids:
+            is_global_admin = True
 
         if message.content.lower() in responses["fullmatch"]:
                 await client.send_message(message.channel, responses["fullmatch"][message.content.lower()])
@@ -445,7 +471,42 @@ async def on_message(message):
                         banklog[1] += wager
                                 
                         await client.send_message(message.channel, toSay)
-
+                elif command == 'transfer':
+                    if terms[1].isdigit() == False:
+                        await client.send_message(message.channel, "Syntax is '!transfer <amount> @person'")
+                        return
+                    wager = int(terms[1])
+                    if len(message.mentions) != 1:
+                        await client.send_message(message.channel, "Please specify one person to transfer to. (@them)")
+                        return
+                    recip = message.mentions[0]
+                    if recip.id == message.author.id:
+                        await client.send_message(message.channel, "ok done genius")
+                        return
+                    toSay = ""
+                    if wager <= 0:
+                        await client.send_message(message.channel, "Wager must be a positive integer.")
+                        return
+                    if message.author.id not in bank:
+                        bank[message.author.id] = 5
+                        gamble_timer[message.author.id] = 0
+                        banklog[0] += 5
+                        toSay = "No balance detected for " + message.author.display_name +", initializing user's bank with a 5 WUMBuck credit."
+                        await client.send_message(message.channel, toSay)
+                    if wager > bank[message.author.id]:
+                        await client.send_message(message.channel, "You only have " + str(bank[message.author.id]) + " available to transfer.")
+                        return
+                    if recip.id not in bank:
+                        bank[recip.id] = 5
+                        gamble_timer[recip.id] = 0
+                        banklog[0] += 5
+                        toSay = "No balance detected for " + recip.display_name +", initializing user's bank with a 5 WUMBuck credit."
+                        await client.send_message(message.channel, toSay)
+                    # finally, everything is acceptable. DO THE TRANSFER
+                    bank[message.author.id] -= wager
+                    bank[recip.id] += wager
+                    await client.send_message(message.channel, "Transferring " + str(wager) + " from " + message.author.display_name + " to " + recip.display_name + ".")
+                   
                 elif command == 'bank':
                         if message.author.id not in bank:
                                         bank[message.author.id] = 5
