@@ -267,6 +267,8 @@ async def on_ready():
 async def on_message(message):
         # Ignore bots
         if message.author.bot:
+            if message.channel.name == 'beedo' and message.content != 'Beedo':
+                await client.delete_message(message)
                 return
         global barrel
         global admin_ids
@@ -400,6 +402,8 @@ async def on_message(message):
 
                 #gambling
                 elif command == 'riches':
+
+                        # gather data
                         buck_list = []
                         name_list = []
                         richer = 0
@@ -410,12 +414,27 @@ async def on_message(message):
                                         buck_list.append(bank[member.id])
                                         name_list.append(member.display_name)
                         bank_sort(buck_list, name_list)
+
+                        # Determine how many to show
+                        to_show = 3
+                        if len(terms) > 1:
+                            try:
+                                to_show = int(terms[1])
+                                if to_show > len(buck_list):
+                                    to_show = len(buck_list)
+                            except ValueError:
+                                if terms[1] == "all":
+                                    to_show = len(buck_list) 
                         for i in range(0, len(buck_list)):
                                 if buck_list[i] > your_credit:
                                         richer += 1
+                        #display data
                         toSay = "There are " + str(richer) + " people with more wealth than your " + str(bank[message.author.id])
-                        if len(buck_list) > 2:
-                                toSay += "\nThe richest 3 people are:\n```{}\t-\t{}\n{}\t-\t{}\n{}\t-\t{}```".format(buck_list[0], name_list[0],buck_list[1], name_list[1],buck_list[2], name_list[2])
+                        if to_show >= 2:
+                                toSay += "\nThe richest "+str(to_show)+" people are:\n```"
+                                for x in range(0, to_show):
+                                    toSay += "{}\t-\t{}\n".format(buck_list[x], name_list[x])
+                                toSay += "```" 
                         else:
                                 toSay += "\nThe richest person is:\n```{}\t-\t{}```".format(buck_list[0], name_list[0])
                         toSay += "I have payed out " + str(banklog[0]) + " and recieved " + str(banklog[1]) + " due to failed wagers."
