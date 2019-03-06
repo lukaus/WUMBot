@@ -33,26 +33,17 @@ locked_channels = []
 client = discord.Client()
 
 responses = None
-admins = None
-
-def load_global_admins():
-        global admins
-        filename = "administrators.json"
-        file = open(filename, 'r')
-        admins = json.load(file)
-        file.close()
 
 def reload_data():
         global admin_ids
         global forbidden_channels
         global responses
-        filename = "responses.json"
+        filename = "dat/responses.json"
         file = open(filename, 'r')
         responses = json.load(file)
         file.close()
-        load_global_admins()
-        admin_file = open('admins.json', 'r')
-        ignore_file = open('ignore_channels.json', 'r')
+        admin_file = open('dat/admins.json', 'r')
+        ignore_file = open('dat/ignore_channels.json', 'r')
         admin_ids = json.load(admin_file)
         forbidden_channels = json.load(ignore_file) 
         admin_file.close()
@@ -63,19 +54,19 @@ bank = {} # maps user id to their credits
 gamble_timer = {} # maps user id to their last gamble
 gamble_cooldown = 69
 #load these from json file
-bank_filename = "bank.json"
+bank_filename = "dat/bank.json"
 bank_file = open(bank_filename, 'r')
 bank = json.load(bank_file)
 bank_file.close()
 for key in bank:
         gamble_timer[key] = 0
 
-banklog_f = open("banklog.json", 'r')
+banklog_f = open("dat/banklog.json", 'r')
 banklog = json.load(banklog_f)
 banklog_f.close()
 
-admin_file = open('admins.json', 'r')
-ignore_file = open('ignore_channels.json', 'r')
+admin_file = open('dat/admins.json', 'r')
+ignore_file = open('dat/ignore_channels.json', 'r')
 admin_ids = json.load(admin_file)
 forbidden_channels = json.load(ignore_file) 
 admin_file.close()
@@ -245,9 +236,9 @@ async def check_for_empty_channels():
                                                         gamble_timer[member.id] = 0
                                                 bank[member.id] += 1
                 #write bank to file
-                with open('bank.json', 'w') as fp:
+                with open('dat/bank.json', 'w') as fp:
                         json.dump(bank, fp)
-                with open('banklog.json', 'w') as blfp:
+                with open('dat/banklog.json', 'w') as blfp:
                         json.dump(banklog, blfp)
                 sys.stdout.write('.')
                 sys.stdout.flush()
@@ -276,7 +267,6 @@ async def on_message(message):
         global hammer
         global check_channel_task
         global responses
-        global admins
         global happy
         global problem
         global sad
@@ -313,7 +303,7 @@ async def on_message(message):
                 sad = sad + responses["sad"]["fullmatch"][message.content.lower()]
 
         if message.content.lower() == "god bot":
-                await client.send_file(message.channel, 'god_bot.jpg')
+                await client.send_file(message.channel, 'img/god_bot.jpg')
         
         if message.content.startswith("gar "):
             send = ""
@@ -324,7 +314,7 @@ async def on_message(message):
                     send += char.upper()
                 else:
                     send += char.lower()
-            await client.send_file(message.channel, 'gar.png')
+            await client.send_file(message.channel, 'img/gar.png')
             await client.send_message(message.channel, send)
             await client.delete_message(message)
 
@@ -429,15 +419,15 @@ async def on_message(message):
                                 if buck_list[i] > your_credit:
                                         richer += 1
                         #display data
-                        toSay = "There are " + str(richer) + " people with more wealth than your " + str(bank[message.author.id])
+                        toSay = "There are " + str(richer) + " people with more wealth than your ₩ " + str(bank[message.author.id])
                         if to_show >= 2:
                                 toSay += "\nThe richest "+str(to_show)+" people are:\n```"
                                 for x in range(0, to_show):
-                                    toSay += "{}\t-\t{}\n".format(buck_list[x], name_list[x])
+                                    toSay += "₩ {}\t-\t{}\n".format(buck_list[x], name_list[x])
                                 toSay += "```" 
                         else:
-                                toSay += "\nThe richest person is:\n```{}\t-\t{}```".format(buck_list[0], name_list[0])
-                        toSay += "I have payed out " + str(banklog[0]) + " and recieved " + str(banklog[1]) + " due to failed wagers."
+                                toSay += "\nThe richest person is:\n```₩ {}\t-\t{}```".format(buck_list[0], name_list[0])
+                        toSay += "I have payed out ₩ " + str(banklog[0]) + " and recieved ₩ " + str(banklog[1]) + " due to failed wagers."
                         await client.send_message(message.channel, toSay)
 
                 elif command == 'gamble':
@@ -556,9 +546,9 @@ async def on_message(message):
                         print(barrel)
                 # Complex commands 
                 elif command == "vim":
-                        await client.send_file(message.channel, 'vim.png')
+                        await client.send_file(message.channel, 'img/vim.png')
                 elif command == "garfield" or command == "07/27/1978":
-                        await client.send_file(message.channel, 'garfield.png')
+                        await client.send_file(message.channel, 'img/garfield.png')
                 elif command == 'report':
                         #toSay += "There are " + managedChannels.length + " reserved channels.\n"
                         emotion = happy - sad
