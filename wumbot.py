@@ -478,7 +478,7 @@ async def on_message(message):
                         else:
                                 toSay = "You rolled: " + str(gamble_roll) + "\n" + message.author.display_name + " wagered ₩ " + str(wager) + " and lost..."
                         banklog[1] += wager
-                        toSay += "\n= ₩ " + str(bank[message.author.id])
+                        toSay += "\n> ₩ " + str(bank[message.author.id])
                         await client.send_message(message.channel, toSay)
                 elif command == 'transfer':
                     if terms[1].isdigit() == False:

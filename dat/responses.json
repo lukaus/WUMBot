@@ -9,6 +9,8 @@
 
 	"fullmatch" :
 	{
+        "rigged" : "ur face is rigged",
+        "#rigged" : "Your face is rigged",
 		"bot" : "here",
 		"good bot" : "Good human.",
 		"bad bot" : "Ouch.",
