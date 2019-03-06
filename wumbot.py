@@ -447,7 +447,7 @@ async def on_message(message):
                                 return
                         if  terms[1].isdigit() == False:
                                 if terms[1].lower() == 'help':
-                                        await client.send_message(message.channel, "!gamble <wager> allows you to wager your WUMBucks against me. If your roll (between 1 and 100) is above 55, you will earn double your wager. A roll of exactly 100 will earn you 4 times your wager. Otherwise, I will keep it all.\nYou can only gamble once every 5 minutes, and you earn a free WUMBuck every 69 seconds you spend in a voice channel (other than an AFK channel).\n'!bank' will display your balance. Good luck!")
+                                        await client.send_message(message.channel, "!gamble <wager> allows you to wager your WUMBucks, or WUMBot currency (₩) against me. If your roll (between 1 and 100) is above 55, you will earn double your wager. A roll of exactly 100 will earn you 4 times your wager. Otherwise, I will keep it all.\nYou can only gamble once every 5 minutes, and you earn a free ₩ 1 every 69 seconds you spend in a voice channel (other than an AFK channel).\n'!bank' will display your balance. Good luck!")
                                         return
                                 elif terms[1].lower() == 'all':
                                         terms[1] = bank[message.author.id]
@@ -460,7 +460,7 @@ async def on_message(message):
                         if message.author.id not in bank:
                                 bank[message.author.id] = 5
                                 gamble_timer[message.author.id] = 0
-                                toSay = "No balance detected for " + message.author.display_name +", initializing user's bank with a 5 WUMBuck credit."
+                                toSay = "No balance detected for " + message.author.display_name +", initializing user's bank with a ₩ 5 credit."
                                 banklog[0] += 5
                                 await client.send_message(message.channel, toSay)
                         # process command
@@ -471,24 +471,24 @@ async def on_message(message):
                         gamble_timer[message.author.id] = time.time()
                         wager = int(terms[1])
                         if wager > bank[message.author.id]:
-                                toSay = "A " + str(wager) + " WUMBuck wager exceeds your balance of " + str(bank[message.author.id]) + "..."
+                                toSay = "A ₩ " + str(wager) + " wager exceeds your balance of ₩ " + str(bank[message.author.id]) + "..."
                                 await client.send_message(message.channel, toSay)
                                 return
                         bank[message.author.id] -= wager
                         gamble_roll = random.randint(1, 100)
                         if gamble_roll > 55:
                                 if gamble_roll == 100:
-                                        toSay = "You rolled: " + str(gamble_roll) + "\nCritical hit! Quadruple earnings! " + message.author.display_name + " wagered " + str(wager) + " WUMBucks and won back " + str((wager*4))+ "!!!!"
+                                        toSay = "You rolled: " + str(gamble_roll) + "\nCritical hit! Quadruple earnings! " + message.author.display_name + " wagered ₩ " + str(wager) + " and won back ₩ " + str((wager*4))+ "!!!!"
                                         bank[message.author.id] += wager * 4
                                         banklog[0] += wager * 4
                                 else:
-                                        toSay = "You rolled: " + str(gamble_roll) + "\nWinner! " + message.author.display_name + " doubled a wager of " + str(wager) + " WUMBucks!"
+                                        toSay = "You rolled: " + str(gamble_roll) + "\nWinner! " + message.author.display_name + " doubled a wager of ₩ " + str(wager) + "!"
                                         bank[message.author.id] += wager * 2
                                         banklog[0] += wager * 2
                         else:
-                                toSay = "You rolled: " + str(gamble_roll) + "\n" + message.author.display_name + " wagered " + str(wager) + " WUMBucks and lost..."
+                                toSay = "You rolled: " + str(gamble_roll) + "\n" + message.author.display_name + " wagered ₩ " + str(wager) + " and lost..."
                         banklog[1] += wager
-                                
+                        toSay += "\n= ₩ " + str(bank[message.author.id])
                         await client.send_message(message.channel, toSay)
                 elif command == 'transfer':
                     if terms[1].isdigit() == False:
@@ -510,7 +510,7 @@ async def on_message(message):
                         bank[message.author.id] = 5
                         gamble_timer[message.author.id] = 0
                         banklog[0] += 5
-                        toSay = "No balance detected for " + message.author.display_name +", initializing user's bank with a 5 WUMBuck credit."
+                        toSay = "No balance detected for " + message.author.display_name +", initializing user's bank with a ₩ 5 credit."
                         await client.send_message(message.channel, toSay)
                     if wager > bank[message.author.id]:
                         await client.send_message(message.channel, "You only have " + str(bank[message.author.id]) + " available to transfer.")
@@ -519,21 +519,24 @@ async def on_message(message):
                         bank[recip.id] = 5
                         gamble_timer[recip.id] = 0
                         banklog[0] += 5
-                        toSay = "No balance detected for " + recip.display_name +", initializing user's bank with a 5 WUMBuck credit."
+                        toSay = "No balance detected for " + recip.display_name +", initializing user's bank with a ₩ 5 credit."
                         await client.send_message(message.channel, toSay)
                     # finally, everything is acceptable. DO THE TRANSFER
                     bank[message.author.id] -= wager
                     bank[recip.id] += wager
-                    await client.send_message(message.channel, "Transferring " + str(wager) + " from " + message.author.display_name + " to " + recip.display_name + ".")
+                    toSay = "Transferring ₩ " + str(wager) + " from " + message.author.display_name + " to " + recip.display_name + "."
+                    toSay += "\n-----------\n" + message.author.display_name + ": ₩ "+str(bank[message.author.id])
+                    toSay += "\n" + recip.display_name + ": ₩ "+str(bank[recip.id])
+                    await client.send_message(message.channel, toSay)
                    
                 elif command == 'bank':
                         if message.author.id not in bank:
                                         bank[message.author.id] = 5
                                         gamble_timer[message.author.id] = 0
-                                        toSay = "No balance detected for " + message.author.display_name +", initializing user's bank with a 5 WUMBuck credit."
+                                        toSay = "No balance detected for " + message.author.display_name +", initializing user's bank with a ₩ 5 credit."
                                         banklog[0] += 5
                                         await client.send_message(message.channel, toSay)
-                        toSay = message.author.display_name + " has a balance of " + str(bank[message.author.id]) + " WUMBucks."
+                        toSay = message.author.display_name + " has a balance of ₩ " + str(bank[message.author.id]) + "."
                         await client.send_message(message.channel, toSay)
                         return
                 # Roulette
