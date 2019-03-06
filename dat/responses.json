@@ -1,0 +1,43 @@
+{
+	"startswith":
+	{
+		"help":			"Bot for locking voice channels to certain users. !lock, !unlock, !allow, !forbid. See !command for more detail.",	
+		"whoareyou":	"The sexiest bot alive.",
+		"command":		"Commands:\n```!lock \tLocks current channel to users in channel\n!unlock\tDeletes lock on current channel\n!allow\t*(@user/role)* : Allows role or user into channel\n!forbid\t*(@user/role)* : Forbids user from entering current channel\n!locks\tLists current locks and allowed users/roles\n\n!whoami\tLists your username and unique id\n!whois\t*(@user)* : Lists user's username and unique id\n\n!maps <x>\tReturns a list of <x> random CS:GO comp maps. Omit <x> to recieve a shuffled list of all comp maps\n\n!roll <die>\tRolls a die of the given type and returns the result\n!coinflip\tReturns 'Heads' or 'Tails'\n!roulette\tPulls the trigger on a revolver to your head.\n!spin\tSpins the barrel on a revolver\n!gamble\tsee '!gamble help'\n!bank\tsee '!gamble help'\n\n!problem\tReports that there is problem with bot to Lukaus```",
+		"commands":	"Commands:\n```!lock \tLocks current channel to users in channel\n!unlock\tDeletes lock on current channel\n!allow\t*(@user/role)* : Allows role or user into channel\n!forbid\t*(@user/role)* : Forbids user from entering current channel\n!locks\tLists current locks and allowed users/roles\n\n!whoami\tLists your username and unique id\n!whois\t*(@user)* : Lists user's username and unique id\n\n!maps <x>\tReturns a list of <x> random CS:GO comp maps. Omit <x> to recieve a shuffled list of all comp maps\n\n!roll <die>\tRolls a die of the given type and returns the result\n!coinflip\tReturns 'Heads' or 'Tails'\n!roulette\tPulls the trigger on a revolver to your head.\n!spin\tSpins the barrel on a revolver\n!gamble\tsee '!gamble help'\n!bank\tsee '!gamble help'\n\n!problem\tReports that there is problem with bot to Lukaus```"
+	},
+
+	"fullmatch" :
+	{
+		"bot" : "here",
+		"good bot" : "Good human.",
+		"bad bot" : "Ouch.",
+		"im tired of bots taking our jobs" : ":("
+	},
+
+
+	"happy":
+	{
+		"fullmatch" : 
+		{
+			"good bot" : 1
+		},
+		"startswith" : 
+		{
+
+		}
+	},
+
+	"sad":
+	{
+		"fullmatch" : 
+		{
+			"im tired of bots taking our jobs" : 3,
+			"bad bot" : 1
+		},
+		"startswith" : 
+		{
+
+		}
+	}
+}
